@@ -4,11 +4,12 @@ import {
   UnauthorizedException,
   ConflictException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { RegisterDTO, LoginDTO } from 'src/models/user.model';
-import { InjectRepository } from '@nestjs/typeorm';
-import { UserEntity } from 'src/entities/user.entity';
 import { Repository } from 'typeorm';
+import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+
+import { LoginDTO, RegisterDTO, UpdateUserDTO } from '../models/user.model';
+import { UserEntity } from '../entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +27,7 @@ export class AuthService {
       return { user: { ...user.toJSON(), token } };
     } catch (err) {
       if (err.code === '23505') {
-        throw new ConflictException('Usernaame has already been taken');
+        throw new ConflictException('Username has already been taken');
       }
       throw new InternalServerErrorException();
     }
@@ -37,13 +38,28 @@ export class AuthService {
       const user = await this.userRepo.findOne({ where: { email } });
       const isValid = await user.comparePassword(password);
       if (!isValid) {
-        throw new UnauthorizedException('Invaild credentials');
+        throw new UnauthorizedException('Invalid credentials');
       }
       const payload = { username: user.username };
       const token = this.jwtService.sign(payload);
       return { user: { ...user.toJSON(), token } };
     } catch (err) {
-      throw new UnauthorizedException('Invaild credentials');
+      throw new UnauthorizedException('Invalid credentials');
     }
+  }
+
+  async findCurrentUser(username: string) {
+    const user = await this.userRepo.findOne({ where: { username } });
+    const payload = { username };
+    const token = this.jwtService.sign(payload);
+    return { user: { ...user.toJSON(), token } };
+  }
+
+  async updateUser(username: string, data: UpdateUserDTO) {
+    await this.userRepo.update({ username }, data);
+    const user = await this.userRepo.findOne({ where: { username } });
+    const payload = { username };
+    const token = this.jwtService.sign(payload);
+    return { user: { ...user.toJSON(), token } };
   }
 }
