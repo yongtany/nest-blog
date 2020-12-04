@@ -3,14 +3,15 @@ import {
   Column,
   BeforeInsert,
   ManyToOne,
-  JoinColumn,
   ManyToMany,
   RelationCount,
+  JoinTable,
 } from 'typeorm';
 import * as slugify from 'slug';
+import { classToPlain } from 'class-transformer';
+
 import { AbstractEntity } from './abstract-entity';
 import { UserEntity } from './user.entity';
-import { classToPlain } from 'class-transformer';
 
 @Entity('articles')
 export class ArticleEntity extends AbstractEntity {
@@ -27,7 +28,7 @@ export class ArticleEntity extends AbstractEntity {
   body: string;
 
   @ManyToMany((type) => UserEntity, (user) => user.favorites, { eager: true })
-  @JoinColumn()
+  @JoinTable()
   favoritedBy: UserEntity[];
 
   @RelationCount((article: ArticleEntity) => article.favoritedBy)
