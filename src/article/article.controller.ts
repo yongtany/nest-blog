@@ -8,18 +8,38 @@ import {
   ValidationPipe,
   Put,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { ArticleService } from './article.service';
 import { AuthGuard } from '@nestjs/passport';
 import { User } from 'src/auth/user.decorator';
 
 import { UserEntity } from 'src/entities/user.entity';
-import { CreateArticleDTO, UpdateArticleDTO } from 'src/models/article.model';
+import {
+  CreateArticleDTO,
+  UpdateArticleDTO,
+  FindAllQuery,
+  FindFeedQuery,
+} from 'src/models/article.model';
 import { OptionalAuthGuard } from 'src/auth/optional-auth.gaurd';
 
 @Controller('articleㄴ')
 export class ArticleController {
   constructor(private articleService: ArticleService) {}
+
+  @Get()
+  @UseGuards(new OptionalAuthGuard())
+  async findAll(@User() user: UserEntity, @Query() query: FindAllQuery) {
+    const articles = await this.articleService.findAll(user, query);
+    return { articles, aritlcesCount: articles.length };
+  }
+
+  @Get('/feed')
+  @UseGuards(AuthGuard())
+  async findFeed(@User() user: UserEntity, @Query() query: FindFeedQuery) {
+    const articles = await this.articleService.findFeed(user, query);
+    return { articles, aritlcesCount: articles.length };
+  }
 
   @Get('/:slug')
   @UseGuards(new OptionalAuthGuard())
@@ -58,5 +78,21 @@ export class ArticleController {
   async deleteArticle(@Param('slug') slug, @User() user: UserEntity) {
     const article = await this.articleService.deleteArticle(slug, user);
     return { article };
+  }
+
+  @Post('/:slug/favorite')
+  @UseGuards(AuthGuard())
+  async favortieAritlce(@User() user: UserEntity, @Param('slug') slug: string) {
+    const article = await this.articleService.favoriteArticle(slug, user);
+    return article;
+  }
+
+  @Delete('/:slug/favorite')
+  async unFavoriteArticle(
+    @User() user: UserEntity,
+    @Param('slug') slug: string,
+  ) {
+    const article = await this.articleService.unFavoriteArticle(slug, user);
+    return article;
   }
 }
