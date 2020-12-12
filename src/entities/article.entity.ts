@@ -6,12 +6,14 @@ import {
   ManyToMany,
   RelationCount,
   JoinTable,
+  OneToMany,
 } from 'typeorm';
 import * as slugify from 'slug';
 import { classToPlain } from 'class-transformer';
 
 import { AbstractEntity } from './abstract-entity';
 import { UserEntity } from './user.entity';
+import { CommentEntity } from './comment.entity';
 
 @Entity('articles')
 export class ArticleEntity extends AbstractEntity {
@@ -39,6 +41,9 @@ export class ArticleEntity extends AbstractEntity {
 
   @ManyToOne((type) => UserEntity, (user) => user.articles, { eager: true })
   author: UserEntity;
+
+  @OneToMany((type) => CommentEntity, (comment) => comment.article)
+  comments: CommentEntity[];
 
   @BeforeInsert()
   generateSlug() {
