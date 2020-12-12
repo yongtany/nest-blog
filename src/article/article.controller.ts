@@ -10,116 +10,190 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
-import { ArticleService } from './article.service';
 import { AuthGuard } from '@nestjs/passport';
-import { User } from 'src/auth/user.decorator';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiUnauthorizedResponse,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  ApiBody,
+} from '@nestjs/swagger';
 
+import { ArticleService } from './article.service';
+import { CommentsService } from './comments.service';
+
+import { User } from 'src/auth/user.decorator';
 import { UserEntity } from 'src/entities/user.entity';
+import { OptionalAuthGuard } from 'src/auth/optional-auth.gaurd';
+
 import {
   CreateArticleDTO,
   UpdateArticleDTO,
   FindAllQuery,
   FindFeedQuery,
-} from 'src/models/article.model';
-import { OptionalAuthGuard } from 'src/auth/optional-auth.gaurd';
-import { CommentsService } from './comments.service';
-import { userInfo } from 'os';
-import { CreateCommentDTO } from 'src/models/comment.models';
+  ArticleResponse,
+  CreateArticleBody,
+  UpdateArticleBody,
+} from 'src/models/article.models';
+import {
+  CreateCommentDTO,
+  CommentResponse,
+  CreateCommentBody,
+} from 'src/models/comment.models';
+import { ResponseObject } from 'src/models/response.model';
 
-@Controller('articleㄴ')
+@ApiTags('article')
+@Controller('articles')
 export class ArticleController {
   constructor(
     private articleService: ArticleService,
     private commentService: CommentsService,
   ) {}
 
+  @ApiOkResponse({ description: 'List all articles' })
   @Get()
   @UseGuards(new OptionalAuthGuard())
-  async findAll(@User() user: UserEntity, @Query() query: FindAllQuery) {
+  async findAll(
+    @User() user: UserEntity,
+    @Query() query: FindAllQuery,
+  ): Promise<
+    ResponseObject<'articles', ArticleResponse[]> &
+      ResponseObject<'articlesCount', number>
+  > {
     const articles = await this.articleService.findAll(user, query);
-    return { articles, aritlcesCount: articles.length };
+    return {
+      articles,
+      articlesCount: articles.length,
+    };
   }
 
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'List all articles of users feed' })
+  @ApiUnauthorizedResponse()
   @Get('/feed')
   @UseGuards(AuthGuard())
-  async findFeed(@User() user: UserEntity, @Query() query: FindFeedQuery) {
+  async findFeed(
+    @User() user: UserEntity,
+    @Query() query: FindFeedQuery,
+  ): Promise<
+    ResponseObject<'articles', ArticleResponse[]> &
+      ResponseObject<'articlesCount', number>
+  > {
     const articles = await this.articleService.findFeed(user, query);
-    return { articles, aritlcesCount: articles.length };
+    return { articles, articlesCount: articles.length };
   }
 
+  @ApiOkResponse({ description: 'Article with slug :slug' })
   @Get('/:slug')
   @UseGuards(new OptionalAuthGuard())
-  async findBySlug(@Param('slug') slug: string, @User() user) {
+  async findBySlug(
+    @Param('slug') slug: string,
+    @User() user: UserEntity,
+  ): Promise<ResponseObject<'article', ArticleResponse>> {
     const article = await this.articleService.findBySlug(slug);
     return { article: article.toArticle(user) };
   }
 
+  @ApiBearerAuth()
+  @ApiCreatedResponse({ description: 'Create article' })
+  @ApiUnauthorizedResponse()
+  @ApiBody({ type: CreateArticleBody })
   @Post()
   @UseGuards(AuthGuard())
   async createArticle(
     @User() user: UserEntity,
-    @Body(ValidationPipe) data: { article: CreateArticleDTO },
-  ) {
-    const article = await this.articleService.createArticle(user, data.article);
+    @Body('article', ValidationPipe) data: CreateArticleDTO,
+  ): Promise<ResponseObject<'article', ArticleResponse>> {
+    const article = await this.articleService.createArticle(user, data);
     return { article };
   }
 
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Update article' })
+  @ApiUnauthorizedResponse()
+  @ApiBody({ type: UpdateArticleBody })
   @Put('/:slug')
   @UseGuards(AuthGuard())
   async updateArticle(
     @Param('slug') slug: string,
     @User() user: UserEntity,
-    @Body(ValidationPipe) data: { article: UpdateArticleDTO },
-  ) {
-    const article = await this.articleService.updateAricle(
-      slug,
-      user,
-      data.article,
-    );
+    @Body('article', ValidationPipe) data: UpdateArticleDTO,
+  ): Promise<ResponseObject<'article', ArticleResponse>> {
+    const article = await this.articleService.updateArticle(slug, user, data);
     return { article };
   }
 
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Delete article' })
+  @ApiUnauthorizedResponse()
   @Delete('/:slug')
   @UseGuards(AuthGuard())
-  async deleteArticle(@Param('slug') slug, @User() user: UserEntity) {
+  async deleteArticle(
+    @Param() slug: string,
+    @User() user: UserEntity,
+  ): Promise<ResponseObject<'article', ArticleResponse>> {
     const article = await this.articleService.deleteArticle(slug, user);
     return { article };
   }
 
+  @ApiOkResponse({ description: 'List article comments' })
   @Get('/:slug/comments')
-  async findComments(@Param('slug') slug: string) {
-    const comments = await this.commentService.findByAricleSlug(slug);
+  async findComments(
+    @Param('slug') slug: string,
+  ): Promise<ResponseObject<'comments', CommentResponse[]>> {
+    const comments = await this.commentService.findByArticleSlug(slug);
     return { comments };
   }
 
+  @ApiBearerAuth()
+  @ApiCreatedResponse({ description: 'Create new comment' })
+  @ApiUnauthorizedResponse()
+  @ApiBody({ type: CreateCommentBody })
   @Post('/:slug/comments')
   async createComment(
     @User() user: UserEntity,
-    @Body(ValidationPipe) data: { comment: CreateCommentDTO },
-  ) {
-    const comment = await this.commentService.createComment(user, data.comment);
+    @Body('comment', ValidationPipe) data: CreateCommentDTO,
+  ): Promise<ResponseObject<'comment', CommentResponse>> {
+    const comment = await this.commentService.createComment(user, data);
     return { comment };
   }
 
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Delete comment' })
+  @ApiUnauthorizedResponse()
   @Delete('/:slug/comments/:id')
-  async deleteComemnt(@User() user: UserEntity, @Param('id') id: number) {
+  async deleteComment(
+    @User() user: UserEntity,
+    @Param('id') id: number,
+  ): Promise<ResponseObject<'comment', CommentResponse>> {
     const comment = await this.commentService.deleteComment(user, id);
     return { comment };
   }
 
+  @ApiBearerAuth()
+  @ApiCreatedResponse({ description: 'Favorite article' })
+  @ApiUnauthorizedResponse()
   @Post('/:slug/favorite')
   @UseGuards(AuthGuard())
-  async favortieAritlce(@User() user: UserEntity, @Param('slug') slug: string) {
+  async favoriteArticle(
+    @Param('slug') slug: string,
+    @User() user: UserEntity,
+  ): Promise<ResponseObject<'article', ArticleResponse>> {
     const article = await this.articleService.favoriteArticle(slug, user);
-    return article;
+    return { article };
   }
 
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Unfavorite article' })
+  @ApiUnauthorizedResponse()
   @Delete('/:slug/favorite')
-  async unFavoriteArticle(
-    @User() user: UserEntity,
+  @UseGuards(AuthGuard())
+  async unfavoriteArticle(
     @Param('slug') slug: string,
-  ) {
-    const article = await this.articleService.unFavoriteArticle(slug, user);
-    return article;
+    @User() user: UserEntity,
+  ): Promise<ResponseObject<'article', ArticleResponse>> {
+    const article = await this.articleService.unfavoriteArticle(slug, user);
+    return { article };
   }
 }

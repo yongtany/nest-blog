@@ -1,26 +1,25 @@
-import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ArticleEntity } from 'src/entities/article.entity';
 import { Repository, Like } from 'typeorm';
 
+import { ArticleEntity } from 'src/entities/article.entity';
 import { UserEntity } from 'src/entities/user.entity';
+import { TagEntity } from 'src/entities/tag.entity';
 import {
   CreateArticleDTO,
   UpdateArticleDTO,
   FindAllQuery,
   FindFeedQuery,
-} from '../models/article.model';
-import { TagEntity } from 'src/entities/tag.entity';
+  ArticleResponse,
+} from 'src/models/article.models';
 
 @Injectable()
 export class ArticleService {
   constructor(
     @InjectRepository(ArticleEntity)
     private articleRepo: Repository<ArticleEntity>,
-    @InjectRepository(UserEntity)
-    private userRepo: Repository<UserEntity>,
-    @InjectRepository(TagEntity)
-    private tagRepo: Repository<TagEntity>,
+    @InjectRepository(UserEntity) private userRepo: Repository<UserEntity>,
+    @InjectRepository(TagEntity) private tagRepo: Repository<TagEntity>,
   ) {}
 
   private async upsertTags(tagList: string[]): Promise<void> {
@@ -37,7 +36,10 @@ export class ArticleService {
     );
   }
 
-  async findAll(user: UserEntity, query: FindAllQuery) {
+  async findAll(
+    user: UserEntity,
+    query: FindAllQuery,
+  ): Promise<ArticleResponse[]> {
     const findOptions: any = {
       where: {},
     };
@@ -61,7 +63,10 @@ export class ArticleService {
     );
   }
 
-  async findFeed(user: UserEntity, query: FindFeedQuery) {
+  async findFeed(
+    user: UserEntity,
+    query: FindFeedQuery,
+  ): Promise<ArticleResponse[]> {
     const { followee } = await this.userRepo.findOne({
       where: { id: user.id },
       relations: ['followee'],
@@ -75,15 +80,20 @@ export class ArticleService {
     );
   }
 
-  findBySlug(slug: string) {
-    return this.articleRepo.findOne({ where: { slug } });
+  findBySlug(slug: string): Promise<ArticleEntity> {
+    return this.articleRepo.findOne({
+      where: { slug },
+    });
   }
 
   private ensureOwnership(user: UserEntity, article: ArticleEntity): boolean {
     return article.author.id === user.id;
   }
 
-  async createArticle(user: UserEntity, data: CreateArticleDTO) {
+  async createArticle(
+    user: UserEntity,
+    data: CreateArticleDTO,
+  ): Promise<ArticleResponse> {
     const article = this.articleRepo.create(data);
     article.author = user;
     await this.upsertTags(data.tagList);
@@ -91,7 +101,11 @@ export class ArticleService {
     return (await this.articleRepo.findOne({ slug })).toArticle(user);
   }
 
-  async updateAricle(slug: string, user: UserEntity, data: UpdateArticleDTO) {
+  async updateArticle(
+    slug: string,
+    user: UserEntity,
+    data: UpdateArticleDTO,
+  ): Promise<ArticleResponse> {
     const article = await this.findBySlug(slug);
     if (!this.ensureOwnership(user, article)) {
       throw new UnauthorizedException();
@@ -100,22 +114,33 @@ export class ArticleService {
     return article.toArticle(user);
   }
 
-  async deleteArticle(slug: string, user: UserEntity) {
+  async deleteArticle(
+    slug: string,
+    user: UserEntity,
+  ): Promise<ArticleResponse> {
     const article = await this.findBySlug(slug);
     if (!this.ensureOwnership(user, article)) {
       throw new UnauthorizedException();
     }
     await this.articleRepo.remove(article);
+    return article.toArticle(user);
   }
 
-  async favoriteArticle(slug: string, user: UserEntity) {
+  async favoriteArticle(
+    slug: string,
+    user: UserEntity,
+  ): Promise<ArticleResponse> {
     const article = await this.findBySlug(slug);
     article.favoritedBy.push(user);
     await article.save();
+    console.log(article);
     return (await this.findBySlug(slug)).toArticle(user);
   }
 
-  async unFavoriteArticle(slug: string, user: UserEntity) {
+  async unfavoriteArticle(
+    slug: string,
+    user: UserEntity,
+  ): Promise<ArticleResponse> {
     const article = await this.findBySlug(slug);
     article.favoritedBy = article.favoritedBy.filter(
       (fav) => fav.id !== user.id,

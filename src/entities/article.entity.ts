@@ -8,12 +8,13 @@ import {
   JoinTable,
   OneToMany,
 } from 'typeorm';
-import * as slugify from 'slug';
 import { classToPlain } from 'class-transformer';
+import * as slugify from 'slug';
 
 import { AbstractEntity } from './abstract-entity';
 import { UserEntity } from './user.entity';
 import { CommentEntity } from './comment.entity';
+import { ArticleResponse } from 'src/models/article.models';
 
 @Entity('articles')
 export class ArticleEntity extends AbstractEntity {
@@ -36,14 +37,14 @@ export class ArticleEntity extends AbstractEntity {
   @RelationCount((article: ArticleEntity) => article.favoritedBy)
   favoritesCount: number;
 
-  @Column('simple-array')
-  tagList: string[];
+  @OneToMany((type) => CommentEntity, (comment) => comment.article)
+  comments: CommentEntity[];
 
   @ManyToOne((type) => UserEntity, (user) => user.articles, { eager: true })
   author: UserEntity;
 
-  @OneToMany((type) => CommentEntity, (comment) => comment.article)
-  comments: CommentEntity[];
+  @Column('simple-array')
+  tagList: string[];
 
   @BeforeInsert()
   generateSlug() {
@@ -57,7 +58,7 @@ export class ArticleEntity extends AbstractEntity {
     return classToPlain(this);
   }
 
-  toArticle(user: UserEntity) {
+  toArticle(user?: UserEntity): ArticleResponse {
     let favorited = null;
     if (user) {
       favorited = this.favoritedBy.map((user) => user.id).includes(user.id);

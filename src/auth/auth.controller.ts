@@ -1,19 +1,45 @@
 import { Controller, Post, Body, ValidationPipe } from '@nestjs/common';
+import {
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiUnauthorizedResponse,
+  ApiBody,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
-import { RegisterDTO, LoginDTO } from '../models/user.model';
+import {
+  RegisterDTO,
+  LoginDTO,
+  AuthResponse,
+  RegisterBody,
+  LoginBody,
+} from '../models/user.model';
+import { ResponseObject } from 'src/models/response.model';
 
-@Controller('users')
+@ApiTags('auth')
+@Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post()
-  register(@Body(ValidationPipe) credentials: { user: RegisterDTO }) {
-    return this.authService.register(credentials.user);
+  @ApiCreatedResponse({ description: 'User Registration' })
+  @ApiBody({ type: RegisterBody })
+  async register(
+    @Body('user', ValidationPipe) credentials: RegisterDTO,
+  ): Promise<ResponseObject<'user', AuthResponse>> {
+    const user = await this.authService.register(credentials);
+    return { user };
   }
 
   @Post('/login')
-  login(@Body(ValidationPipe) credentials: { user: LoginDTO }) {
-    return this.authService.login(credentials.user);
+  @ApiOkResponse({ description: 'User Login' })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
+  @ApiBody({ type: LoginBody })
+  async login(
+    @Body('user', ValidationPipe) credentials: LoginDTO,
+  ): Promise<ResponseObject<'user', AuthResponse>> {
+    const user = await this.authService.login(credentials);
+    return { user };
   }
 }

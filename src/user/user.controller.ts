@@ -12,7 +12,9 @@ import { User } from '../auth/user.decorator';
 import { UserEntity } from '../entities/user.entity';
 import { UpdateUserDTO } from 'src/models/user.model';
 import { AuthService } from 'src/auth/auth.service';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('user')
 @Controller('user')
 export class UserController {
   constructor(private authService: AuthService) {}

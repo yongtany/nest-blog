@@ -4,27 +4,37 @@ import {
   Param,
   NotFoundException,
   Post,
-  UseGuards,
   Delete,
+  UseGuards,
   HttpCode,
 } from '@nestjs/common';
+import {
+  ApiOkResponse,
+  ApiUnauthorizedResponse,
+  ApiBearerAuth,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 
+import { User } from 'src/auth/user.decorator';
+import { UserEntity } from 'src/entities/user.entity';
+import { OptionalAuthGuard } from 'src/auth/optional-auth.gaurd';
 import { UserService } from './user.service';
-import { UserEntity } from '../entities/user.entity';
-import { User } from '../auth/user.decorator';
-import { OptionalAuthGuard } from '../auth/optional-auth.gaurd';
+import { ResponseObject } from 'src/models/response.model';
+import { ProfileResponse } from 'src/models/user.model';
 
+@ApiTags('profiles')
 @Controller('profiles')
 export class ProfileController {
   constructor(private userService: UserService) {}
 
-  @Get('/:userename')
+  @ApiOkResponse({ description: 'Find user profile' })
+  @Get('/:username')
   @UseGuards(new OptionalAuthGuard())
   async findProfile(
     @Param('username') username: string,
     @User() user: UserEntity,
-  ) {
+  ): Promise<ResponseObject<'profile', ProfileResponse>> {
     const profile = await this.userService.findByUsername(username, user);
     if (!profile) {
       throw new NotFoundException();
@@ -32,24 +42,30 @@ export class ProfileController {
     return { profile };
   }
 
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Follow user' })
+  @ApiUnauthorizedResponse()
   @Post('/:username/follow')
   @HttpCode(200)
   @UseGuards(AuthGuard())
   async followUser(
     @User() user: UserEntity,
     @Param('username') username: string,
-  ) {
+  ): Promise<ResponseObject<'profile', ProfileResponse>> {
     const profile = await this.userService.followUser(user, username);
     return { profile };
   }
 
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Unfollow user' })
+  @ApiUnauthorizedResponse()
   @Delete('/:username/follow')
   @UseGuards(AuthGuard())
   async unfollowUser(
     @User() user: UserEntity,
     @Param('username') username: string,
-  ) {
-    const profile = this.userService.unfollowUser(user, username);
+  ): Promise<ResponseObject<'profile', ProfileResponse>> {
+    const profile = await this.userService.unfollowUser(user, username);
     return { profile };
   }
 }

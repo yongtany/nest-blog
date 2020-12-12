@@ -12,7 +12,7 @@ export class CommentsService {
     private commentRepo: Repository<CommentEntity>,
   ) {}
 
-  findByAricleSlug(slug: string) {
+  findByArticleSlug(slug: string) {
     return this.commentRepo.find({
       where: { 'article.slug': slug },
       relations: ['article'],
